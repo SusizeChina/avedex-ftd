@@ -1,131 +1,98 @@
 package com.avedex.cc.service.impl;
 
-import com.avedex.cc.api.TransactionHistoryApi;
-import com.avedex.cc.entity.ApiResult;
-import com.avedex.cc.entity.AreaInfo;
-import com.avedex.cc.entity.TransactionHistory;
+import com.avedex.cc.api.TransactionApi;
+import com.avedex.cc.converters.FromSymbolConverter;
+import com.avedex.cc.entity.TransactionAccountInfo;
+import com.avedex.cc.entity.TransactionHistoryApiResult;
+import com.avedex.cc.entity.TransactionHistoryInfo;
+import com.avedex.cc.properties.TransactionProperties;
+import com.avedex.cc.service.SystemEmailService;
 import com.avedex.cc.service.TransactionHistoryService;
+import com.avedex.cc.service.TransactionInfoService;
+import com.avedex.cc.utils.DateTimeFormatUtil;
 import com.avedex.cc.utils.ExcelUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
-import javax.mail.MessagingException;
-import javax.mail.internet.MimeMessage;
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletResponse;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.util.*;
+import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.List;
 
 @Service
 public class TransactionHistoryServiceImpl implements TransactionHistoryService {
 
     private final static String X_AUTH = "x-auth";
-    @Autowired
-    private JavaMailSender javaMailSender;
-    @Value("${x-auth-token:}")
-    private String x_auth_token;
+    @Resource
+    private TransactionProperties transactionProperties;
+    @Resource
+    private ObjectMapper objectMapper;
+    @Resource
+    private RestTemplate restTemplate;
+    @Resource
+    private TransactionInfoService transactionInfoService;
+    @Resource
+    private SystemEmailService systemEmailService;
 
     @Override
-    public List<TransactionHistory> getTransactionHistory(String name) {
-        List<AreaInfo> areaInfos = new ArrayList<>();
-        try {
-
-            File file = new File("C:\\Users\\李惠权\\IdeaProjects\\avedex-ftd\\src\\main\\resources\\ftc.txt");
-            Scanner sc = new Scanner(file);
-
-            while (sc.hasNextLine()) {
-                String context = sc.nextLine();
-                String[] split = context.split(",");
-                AreaInfo areaInfo = new AreaInfo();
-                areaInfo.setArea(split[0]);
-                areaInfo.setName(split[1]);
-                areaInfo.setAddress(split[2]);
-                areaInfos.add(areaInfo);
-            }
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
-        }
-        RestTemplate restTemplate = new RestTemplate();
-        String transactionHistoryApi = TransactionHistoryApi.TransactionHistoryApi.replace("{name}", name);
+    public List<TransactionHistoryInfo> getTransactionHistories(String txName) {
+        String transactionHistoryApi = TransactionApi.TRANSACTION_HISTORY_API.replace("{txName}", txName);
         HttpHeaders headers = new HttpHeaders();
-        headers.set(X_AUTH, x_auth_token);
+        headers.set(X_AUTH, transactionProperties.getXAuthToken());
         HttpEntity<MultiValueMap<String, Object>> httpEntity = new HttpEntity<MultiValueMap<String, Object>>(null, headers);
         ResponseEntity<String> restTemplateForObject = restTemplate.exchange(transactionHistoryApi, HttpMethod.GET, httpEntity, String.class);
-        ObjectMapper objectMapper = new ObjectMapper();
-        List<TransactionHistory> transactionHistories = Collections.emptyList();
+        List<TransactionHistoryInfo> transactionHistories = Collections.emptyList();
         try {
-            ApiResult apiResult = objectMapper.readValue(restTemplateForObject.getBody(), ApiResult.class);
-            String data = apiResult.getData().replace("\r|\n", "");
-            transactionHistories = objectMapper.readValue(data, new TypeReference<List<TransactionHistory>>() {
+            TransactionHistoryApiResult transactionHistoryApiResult = objectMapper.readValue(restTemplateForObject.getBody(), TransactionHistoryApiResult.class);
+            String data = transactionHistoryApiResult.getData().replace("\r|\n", "");
+            transactionHistories = objectMapper.readValue(data, new TypeReference<List<TransactionHistoryInfo>>() {
             });
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
-        for (TransactionHistory transactionHistory : transactionHistories
-        ) {
-            if (transactionHistory.getFrom_symbol().equalsIgnoreCase("FTD")) {
-                transactionHistory.setAmount(transactionHistory.getFrom_amount());
-            } else if (transactionHistory.getFrom_symbol().equalsIgnoreCase("WTRX")) {
-                transactionHistory.setAmount(transactionHistory.getTo_amount());
+        for (TransactionHistoryInfo transactionHistoryInfo : transactionHistories) {
+            if (transactionHistoryInfo.getFrom_symbol().equalsIgnoreCase(FromSymbolConverter.FTD)) {
+                transactionHistoryInfo.setAmount(transactionHistoryInfo.getFrom_amount());
+            } else if (transactionHistoryInfo.getFrom_symbol().equalsIgnoreCase(FromSymbolConverter.WTRX)) {
+                transactionHistoryInfo.setAmount(transactionHistoryInfo.getTo_amount());
             }
-
-            String transaction = TransactionHistoryApi.TransactionHistoryInfoApi.replace("{transaction}", transactionHistory.getTransaction());
-            HttpEntity<MultiValueMap<String, Object>> httpEntitys = new HttpEntity<MultiValueMap<String, Object>>(null, headers);
-            ResponseEntity<String> responseEntity = restTemplate.exchange(transaction, HttpMethod.GET, httpEntitys, String.class);
-            String body = responseEntity.getBody();
-            try {
-                Map map = objectMapper.readValue(body, Map.class);
-                transactionHistory.setAccount(map.get("ownerAddress").toString());
-                for (AreaInfo areaInfo : areaInfos) {
-                    if (areaInfo.getAddress().equalsIgnoreCase(transactionHistory.getAccount())) {
-                        transactionHistory.setArea(areaInfo.getArea());
-                        transactionHistory.setName(areaInfo.getName());
-                        continue;
-                    }
-                }
-
-            } catch (JsonProcessingException e) {
-                throw new RuntimeException(e);
-            }
-
+            TransactionAccountInfo transactionInfo = transactionInfoService.getTransactionInfo(transactionHistoryInfo.getTransaction());
+            transactionHistoryInfo.setAccount(transactionInfo.getAccount());
+            transactionHistoryInfo.setArea(transactionInfo.getArea());
+            transactionHistoryInfo.setCommunity(transactionHistoryInfo.getCommunity());
         }
         return transactionHistories;
     }
 
     @Override
-    public void exportTransactionHistory(String name, HttpServletResponse httpServletResponse) {
-        sendEmail();
-//        List<TransactionHistory> transactionHistories = this.getTransactionHistory(name);
-//        ExcelUtils.writeExcel(httpServletResponse, null, "交易历史", transactionHistories);
+    public void exportTransactionHistories(String txName, HttpServletResponse httpServletResponse) {
+        List<TransactionHistoryInfo> transactionHistories = this.getTransactionHistories(txName);
+        String nowDateTime = DateTimeFormatUtil.formatToString(LocalDateTime.now());
+        ExcelUtils.writeExcel(httpServletResponse, TransactionHistoryInfo.class, txName + "交易历史" + nowDateTime, transactionHistories);
     }
 
-    private void sendEmail() {
-        MimeMessage mimeMessage = javaMailSender.createMimeMessage();
-
-        try {
-            // true表示构建一个可以带附件的邮件对象
-            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true);
-            helper.setSubject("交易记录");
-            helper.setFrom("1725719680@qq.com");
-            helper.setTo("276823471@qq.com");
-            helper.setSentDate(new Date());
-            helper.setText("以下为交易详情");
-            helper.addAttachment("交易记录.xlsx", new File("C:\\Users\\李惠权\\Downloads\\交易历史 (6).xlsx"));
-            javaMailSender.send(mimeMessage);
-        } catch (MessagingException e) {
-            throw new RuntimeException(e);
+    @Override
+    public void generatorTransactionHistories(String txName) {
+        List<TransactionHistoryInfo> transactionHistories = this.getTransactionHistories(txName);
+        String format = "yyyy年MM月dd日HH时";
+        String nowDateTime = DateTimeFormatUtil.formatToString(LocalDateTime.now(), format);
+        File file = new File(txName + "交易历史" + nowDateTime);
+        if (!file.exists()) {
+            file.mkdirs();
         }
+        ExcelUtils.writeExcelFile(file, TransactionHistoryInfo.class, transactionHistories);
+        String subject = "【" + txName + "当日成交历史(截止" + nowDateTime + ")】";
+        systemEmailService.sendEmail(subject, transactionProperties.getTo(), subject + "详情随附件！", file.getName(), file);
     }
+
 }

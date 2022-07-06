@@ -1,6 +1,6 @@
 package com.avedex.cc.service;
 
-import com.avedex.cc.entity.TransactionHistory;
+import com.avedex.cc.entity.TransactionHistoryInfo;
 
 import javax.servlet.http.HttpServletResponse;
 import java.util.List;
@@ -8,15 +8,21 @@ import java.util.List;
 public interface TransactionHistoryService {
     /**
      * 查询交易历史
-     * @param name
+     *
+     * @param txName
      * @return
      */
-    List<TransactionHistory> getTransactionHistory(String name);
+    List<TransactionHistoryInfo> getTransactionHistories(String txName);
+
+    /**
+     * @param txName
+     * @param httpServletResponse
+     */
+    void exportTransactionHistories(String txName, HttpServletResponse httpServletResponse);
 
     /**
      *
-     * @param name
-     * @param httpServletResponse
+     * @param txName
      */
-    void exportTransactionHistory(String name, HttpServletResponse httpServletResponse);
+    void generatorTransactionHistories(String txName);
 }

@@ -1,6 +1,9 @@
 package com.avedex.cc.entity;
 
-public class ApiResult {
+import lombok.Data;
+
+@Data
+public class TransactionHistoryApiResult {
     private int status;
 
     private String msg;

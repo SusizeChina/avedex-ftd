@@ -9,7 +9,7 @@ import com.alibaba.excel.metadata.property.ExcelContentProperty;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-public class DateTimeConverter implements Converter<Integer> {
+public class TimestampConverter implements Converter<Integer> {
 
     @Override
     public Class supportJavaTypeKey() {
@@ -23,7 +23,7 @@ public class DateTimeConverter implements Converter<Integer> {
 
     @Override
     public Integer convertToJavaData(CellData cellData, ExcelContentProperty excelContentProperty, GlobalConfiguration globalConfiguration) throws Exception {
-        return null;
+        return cellData.getDataFormat();
     }
 
 

@@ -17,4 +17,10 @@ spring:
           socketFactoryClass: javax.net.ssl.SSLSocketFactory
         #表示开启 DEBUG 模式，这样，邮件发送过程的日志会在控制台打印出来，方便排查错误
         debug: true
+transaction:
   x-auth-token: 6b5466a0ae63578a5cfc96c3f5ac9d0f1656734972472208557
+  ftd: TRi5H2adh2h5jAsU4GES6HpQQPvn1G2f68-tron
+  ftc: TRi5H2adh2h5jAsU4GES6HpQQPvn1G2f68-tron
+  to:
+    - 1725719680@qq.com
+    - 276823471@qq.com
