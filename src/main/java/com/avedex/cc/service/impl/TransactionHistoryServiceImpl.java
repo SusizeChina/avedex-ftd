@@ -25,6 +25,7 @@ import org.springframework.web.client.RestTemplate;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletResponse;
 import java.io.File;
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
@@ -69,29 +70,37 @@ public class TransactionHistoryServiceImpl implements TransactionHistoryService 
             TransactionAccountInfo transactionInfo = transactionInfoService.getTransactionInfo(transactionHistoryInfo.getTransaction());
             transactionHistoryInfo.setAccount(transactionInfo.getAccount());
             transactionHistoryInfo.setArea(transactionInfo.getArea());
-            transactionHistoryInfo.setCommunity(transactionHistoryInfo.getCommunity());
+            transactionHistoryInfo.setCommunity(transactionInfo.getCommunity());
         }
         return transactionHistories;
     }
 
     @Override
-    public void exportTransactionHistories(String txName, HttpServletResponse httpServletResponse) {
+    public void exportTransactionHistories(String type, String txName, HttpServletResponse httpServletResponse) {
         List<TransactionHistoryInfo> transactionHistories = this.getTransactionHistories(txName);
         String nowDateTime = DateTimeFormatUtil.formatToString(LocalDateTime.now());
-        ExcelUtils.writeExcel(httpServletResponse, TransactionHistoryInfo.class, txName + "交易历史" + nowDateTime, transactionHistories);
+        ExcelUtils.writeExcel(httpServletResponse, TransactionHistoryInfo.class, type + "交易历史" + nowDateTime, transactionHistories);
+
     }
 
     @Override
-    public void generatorTransactionHistories(String txName) {
+    public void generatorTransactionHistories(String type, String txName) {
         List<TransactionHistoryInfo> transactionHistories = this.getTransactionHistories(txName);
         String format = "yyyy年MM月dd日HH时";
         String nowDateTime = DateTimeFormatUtil.formatToString(LocalDateTime.now(), format);
-        File file = new File(txName + "交易历史" + nowDateTime);
+        File file = new File(type + "/" + type + "交易历史" + nowDateTime + ".xlsx");
+        if (!file.getParentFile().exists()) {
+            file.getParentFile().mkdirs();
+        }
         if (!file.exists()) {
-            file.mkdirs();
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
         ExcelUtils.writeExcelFile(file, TransactionHistoryInfo.class, transactionHistories);
-        String subject = "【" + txName + "当日成交历史(截止" + nowDateTime + ")】";
+        String subject = type + "【当日成交历史(截止" + nowDateTime + ")】";
         systemEmailService.sendEmail(subject, transactionProperties.getTo(), subject + "详情随附件！", file.getName(), file);
     }
 

@@ -4,6 +4,7 @@ import com.avedex.cc.entity.TransactionAccountInfo;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
@@ -12,7 +13,7 @@ public class TransactionAccountConfig {
     private List<TransactionAccountInfo> transactionAccountInfos;
 
     public TransactionAccountConfig() {
-        List<TransactionAccountInfo> transactionAccountInfos = Collections.emptyList();
+        List<TransactionAccountInfo> transactionAccountInfos = new ArrayList<>();
         try {
             File file = new File("C:\\Users\\李惠权\\IdeaProjects\\avedex-ftd\\src\\main\\resources\\ftc.txt");
             Scanner sc = new Scanner(file);

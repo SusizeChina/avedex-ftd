@@ -4,6 +4,7 @@ import com.alibaba.excel.ExcelWriter;
 import com.alibaba.excel.metadata.BaseRowModel;
 import com.alibaba.excel.metadata.Sheet;
 import com.alibaba.excel.support.ExcelTypeEnum;
+import com.avedex.cc.entity.TransactionHistoryInfo;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.servlet.ServletOutputStream;
@@ -30,7 +31,7 @@ public class ExcelUtils {
             ServletOutputStream out = response.getOutputStream();
             ExcelWriter writer = new ExcelWriter(out, ExcelTypeEnum.XLSX, true);
             //这边对应的实体类改为你所导出的实体类
-            Sheet sheet = new Sheet(1, 0, clazz.getSuperclass());
+            Sheet sheet = new Sheet(1, 0, TransactionHistoryInfo.class);
             //设置列宽 设置每列的宽度
             Map columnWidth = new HashMap();
             columnWidth.put(0, 5000);
@@ -65,10 +66,11 @@ public class ExcelUtils {
         }
         return true;
     }
+
     /**
-     * @param file http请求报文
-     * @param clazz    Excel实体映射类
-     * @param data     导出数据
+     * @param file  http请求报文
+     * @param clazz Excel实体映射类
+     * @param data  导出数据
      * @return
      */
     public static Boolean writeExcelFile(File file, Class clazz, List<? extends BaseRowModel> data) {
@@ -77,7 +79,7 @@ public class ExcelUtils {
             FileOutputStream out = new FileOutputStream(file);
             ExcelWriter writer = new ExcelWriter(out, ExcelTypeEnum.XLSX, true);
             //这边对应的实体类改为你所导出的实体类
-            Sheet sheet = new Sheet(1, 0, clazz.getSuperclass());
+            Sheet sheet = new Sheet(1, 0, TransactionHistoryInfo.class);
             //设置列宽 设置每列的宽度
             Map columnWidth = new HashMap();
             columnWidth.put(0, 5000);

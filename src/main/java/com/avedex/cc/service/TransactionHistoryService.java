@@ -15,14 +15,15 @@ public interface TransactionHistoryService {
     List<TransactionHistoryInfo> getTransactionHistories(String txName);
 
     /**
+     * @param type
      * @param txName
      * @param httpServletResponse
      */
-    void exportTransactionHistories(String txName, HttpServletResponse httpServletResponse);
+    void exportTransactionHistories(String type, String txName, HttpServletResponse httpServletResponse);
 
     /**
-     *
+     * @param type
      * @param txName
      */
-    void generatorTransactionHistories(String txName);
+    void generatorTransactionHistories(String type, String txName);
 }
